@@ -1,0 +1,628 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header fade-in">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+                </h1>
+                <p class="mb-0 opacity-75">
+                    Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong>! 
+                    Last login: {{ user.last_login|date:"M d, Y \a\t g:i A"|default:"First time login" }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="d-flex gap-2 justify-content-md-end">
+                    <a href="{% url 'admin:index' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-cog"></i> Django Admin
+                    </a>
+                    <a href="{% url 'admin_logout' %}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GHL Connection Status Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="ghl-connection-banner fade-in" style="animation-delay: 0.2s;">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="ghl-icon-container me-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="ghl-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 text-white">Connect Your GHL Account</h4>
+                                <p class="mb-0 text-white opacity-90">Link your Go High Level account to enable seamless integration and unlock all features.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <a href="{% url 'oauth_connect' %}" class="btn-ghl-connect pulse">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" class="me-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Connect GHL Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    {% if message %}
+        {% if token_stored %}
+            <div class="alert alert-success alert-dismissible fade show ghl-success-message fade-in" role="alert" style="animation-delay: 0.3s;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#10b981">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold">{{ message }}</h6>
+                        <p class="mb-0 small">Your GHL account has been successfully connected and is ready to use!</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% else %}
+            <div class="alert alert-danger alert-dismissible fade show ghl-error-message fade-in" role="alert" style="animation-delay: 0.3s;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#ef4444">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold">Connection Failed</h6>
+                        <p class="mb-0 small">{{ message }} Please try again or contact support if the issue persists.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- GHL Connections Section -->
+        <div class="col-lg-8">
+            <div class="card fade-in shadow-lg border-0" style="animation-delay: 0.5s;">
+                <div class="card-header bg-transparent border-0 py-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="card-title mb-0 fw-bold text-dark">
+                            <i class="fas fa-bolt text-warning me-2"></i> GHL Account Connections
+                        </h4>
+                        {% if ghl_credentials %}
+                            <a href="{% url 'oauth_connect' %}" class="btn btn-primary btn-lg px-4 py-2 rounded-3 shadow-sm">
+                                <i class="fas fa-plus me-2"></i> Add Connection
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body px-4 pb-4">
+                    {% if ghl_credentials %}
+                        <!-- Stats Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="stat-card bg-primary text-white rounded-3 p-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-link fa-2x me-3"></i>
+                                        <div>
+                                            <h5 class="mb-0">{{ total_connections }}</h5>
+                                            <small>Total Connections</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card bg-success text-white rounded-3 p-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-map-marker-alt fa-2x me-3"></i>
+                                        <div>
+                                            <h5 class="mb-0">{{ active_locations }}</h5>
+                                            <small>Active Locations</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-card bg-info text-white rounded-3 p-3">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-building fa-2x me-3"></i>
+                                        <div>
+                                            <h5 class="mb-0">{{ companies_count }}</h5>
+                                            <small>Companies</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Enhanced Connection Cards -->
+                        <div class="row">
+                            {% for credential in ghl_credentials %}
+                            <div class="col-lg-6 mb-4">
+                                <div class="connection-card h-100 border-0 shadow-sm rounded-3 overflow-hidden hover-lift">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start justify-content-between mb-3">
+                                            <div class="connection-status-indicator bg-success rounded-circle"></div>
+                                            <div class="dropdown">
+                                                <button class="btn btn-link p-0 text-muted" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View Details</a></li>
+                                                    <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-unlink me-2"></i>Disconnect</a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <h5 class="card-title fw-bold text-dark mb-3">
+                                            {{ credential.location_name|default:"Unnamed Location" }}
+                                        </h5>
+                                        
+                                        <div class="connection-details">
+                                            <div class="detail-row mb-2">
+                                                <span class="detail-label text-muted">Company:</span>
+                                                <span class="badge bg-primary-subtle text-primary ms-2">
+                                                    {{ credential.company_id|default:"N/A"|truncatechars:20 }}
+                                                </span>
+                                            </div>
+                                            
+                                            <div class="detail-row mb-2">
+                                                <span class="detail-label text-muted">Location:</span>
+                                                {% if credential.location_id %}
+                                                    <span class="badge bg-success-subtle text-success ms-2">
+                                                        <i class="fas fa-check-circle me-1"></i>
+                                                        {{ credential.location_id|truncatechars:15 }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary-subtle text-secondary ms-2">
+                                                        <i class="fas fa-minus-circle me-1"></i>
+                                                        No Location
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <div class="detail-row mb-3">
+                                                <span class="detail-label text-muted">Type:</span>
+                                                <span class="badge bg-info-subtle text-info ms-2">
+                                                    {{ credential.user_type|default:"Standard" }}
+                                                </span>
+                                            </div>
+                                            
+                                            {% if credential.location_id %}
+                                                <button class="btn btn-outline-primary w-100 rounded-3 view-users-btn" 
+                                                        data-location-id="{{ credential.location_id }}"
+                                                        data-location-name="{{ credential.location_name }}"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#locationUsersModal">
+                                                    <i class="fas fa-users me-2"></i>
+                                                    View Users ({{ credential.user_count|default:0 }})
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-outline-secondary w-100 rounded-3" disabled>
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                    No Location Set
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <!-- Enhanced Empty State -->
+                        <div class="text-center py-5">
+                            <div class="ghl-empty-state">
+                                <div class="ghl-empty-icon mb-4">
+                                    <div class="empty-icon-wrapper bg-primary-subtle rounded-circle d-inline-flex align-items-center justify-content-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="ghl-icon text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h4 class="text-dark mb-3 fw-bold">No GHL Connections</h4>
+                                <p class="text-muted mb-4 fs-5">Connect your Go High Level account to get started with seamless integration and manage your locations efficiently.</p>
+                                <a href="{% url 'oauth_connect' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="me-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                    Connect Your First Location
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info & Quick Actions -->
+        <div class="col-lg-4">
+            <!-- Account Info Card -->
+            <div class="card fade-in mb-4" style="animation-delay: 0.6s;">
+                <div class="card-header bg-transparent">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-user-circle text-primary"></i> Account Info
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Username</label>
+                        <p class="mb-0">{{ user.username }}</p>
+                    </div>
+                    
+                    {% if user.email %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email</label>
+                        <p class="mb-0">{{ user.email }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if user.first_name or user.last_name %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Full Name</label>
+                        <p class="mb-0">{{ user.get_full_name|default:"Not provided" }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status</label>
+                        <p class="mb-0">
+                            {% if user.is_superuser %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-crown"></i> Superuser
+                                </span>
+                            {% elif user.is_staff %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-user-shield"></i> Staff
+                                </span>
+                            {% endif %}
+                            
+                            {% if user.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle"></i> Active
+                                </span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GHL Integration Status Card -->
+            <div class="card fade-in" style="animation-delay: 0.7s;">
+                <div class="card-header bg-transparent">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-bolt text-warning"></i> Integration Status
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if ghl_credentials %}
+                        <div class="integration-status-success">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="status-icon-success me-3">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 text-success">Connected</h6>
+                                    <p class="mb-0 small text-muted">{{ ghl_credentials|length }} location{{ ghl_credentials|length|pluralize }} connected</p>
+                                </div>
+                            </div>
+                            <div class="d-grid">
+                                <a href="{% url 'oauth_connect' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-plus me-1"></i> Add Another Location
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="integration-status-pending">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="status-icon-pending me-3">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 text-warning">Not Connected</h6>
+                                    <p class="mb-0 small text-muted">Connect your GHL account to get started</p>
+                                </div>
+                            </div>
+                            <div class="d-grid">
+                                <a href="{% url 'oauth_connect' %}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-link me-1"></i> Connect Now
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location Users Modal -->
+<div class="modal fade" id="locationUsersModal" tabindex="-1" aria-labelledby="locationUsersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="locationUsersModalLabel">Location Users</h5>
+                    <small class="opacity-75" id="locationSubtitle">Loading...</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Loading users...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.fade-in {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stat-card {
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.connection-card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+.connection-status-indicator {
+    width: 12px;
+    height: 12px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.detail-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.ghl-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.empty-icon-wrapper {
+    width: 100px;
+    height: 100px;
+}
+
+.view-users-btn:hover {
+    background-color: var(--bs-primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.user-card {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.user-card:hover {
+    border-left-color: var(--bs-primary);
+    background-color: var(--bs-light);
+}
+
+.modal-content {
+    border-radius: 15px;
+}
+
+.modal-header {
+    border-radius: 15px 15px 0 0;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.bg-primary-subtle {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.bg-success-subtle {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+.bg-info-subtle {
+    background-color: rgba(13, 202, 240, 0.1);
+}
+
+.bg-secondary-subtle {
+    background-color: rgba(108, 117, 125, 0.1);
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const viewUsersButtons = document.querySelectorAll('.view-users-btn');
+    const modalTitle = document.getElementById('locationUsersModalLabel');
+    const modalSubtitle = document.getElementById('locationSubtitle');
+    const modalContent = document.getElementById('modalContent');
+    
+    viewUsersButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const locationId = this.dataset.locationId;
+            const locationName = this.dataset.locationName;
+            
+            // Update modal title
+            modalTitle.textContent = locationName || 'Location Users';
+            modalSubtitle.textContent = `Location ID: ${locationId}`;
+            
+            // Show loading state
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading users...</p>
+                </div>
+            `;
+            
+            // Fetch users for this location
+            fetch(`/location-users/${locationId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.users && data.users.length > 0) {
+                        let usersHtml = '<div class="p-4">';
+                        
+                        data.users.forEach(user => {
+                            usersHtml += `
+                                <div class="user-card border rounded-3 p-4 mb-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="avatar-circle bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bold">${user.name}</h6>
+                                                    <small class="text-muted">ID: ${user.user_id}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="contact-info">
+                                                <div class="mb-2">
+                                                    <i class="fas fa-envelope text-muted me-2"></i>
+                                                    <span class="text-sm">${user.email}</span>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <i class="fas fa-phone text-muted me-2"></i>
+                                                    <span class="text-sm">${user.phone || 'N/A'}</span>
+                                                </div>
+                                                <div>
+                                                    <i class="fas fa-calendar text-muted me-2"></i>
+                                                    <span class="badge ${user.calendar_id ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}">
+                                                        ${user.calendar_id || 'No Calendar'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        usersHtml += '</div>';
+                        modalContent.innerHTML = usersHtml;
+                    } else {
+                        modalContent.innerHTML = `
+                            <div class="text-center py-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No Users Found</h5>
+                                    <p class="text-muted">This location doesn't have any users associated with it.</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching users:', error);
+                    modalContent.innerHTML = `
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                                <h5 class="text-danger">Error Loading Users</h5>
+                                <p class="text-muted">Failed to load users for this location. Please try again.</p>
+                            </div>
+                        </div>
+                    `;
+                });
+        });
+    });
+
+    // Auto-dismiss success/error messages after 5 seconds
+    const alerts = document.querySelectorAll('.ghl-success-message, .ghl-error-message');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            if (alert && alert.classList.contains('show')) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 5000);
+    });
+});
+
+function refreshConnections() {
+    // Add loading state
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Refreshing...';
+    btn.disabled = true;
+    
+    // Simulate refresh (you can replace this with actual AJAX call)
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        // You could add a toast notification here
+    }, 2000);
+}
+</script>
+{% endblock %}

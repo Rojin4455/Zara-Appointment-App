@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-header fade-in">
+        <h1><i class="fas fa-shield-alt"></i></h1>
+        <h1>Admin Portal</h1>
+        <p>Secure access for authorized personnel only</p>
+    </div>
+
+    <div class="card fade-in">
+        <div class="card-body p-4">
+            <h2 class="card-title text-center mb-4" style="color: var(--primary-color); font-weight: 600;">
+                <i class="fas fa-lock"></i> Admin Login
+            </h2>
+            
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                
+                <div class="form-floating mb-3">
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Username"
+                        required
+                        autocomplete="username"
+                        autofocus
+                    >
+                    <label for="username">
+                        <i class="fas fa-user"></i> Username
+                    </label>
+                    <div class="invalid-feedback">
+                        Please provide a valid username.
+                    </div>
+                </div>
+
+                <div class="form-floating mb-4">
+                    <input 
+                        type="password" 
+                        class="form-control" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Password"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <label for="password">
+                        <i class="fas fa-key"></i> Password
+                    </label>
+                    <div class="invalid-feedback">
+                        Please provide your password.
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> Login to Admin Portal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <small class="text-white-50">
+            <i class="fas fa-info-circle"></i> 
+            Only authorized administrators can access this portal
+        </small>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        min-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        opacity: 0.65;
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    }
+    
+    .was-validated .form-control:valid {
+        border-color: var(--success-color);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2327ae60' d='m2.3 6.73.4.7 2.8-4.5.4-.7-.8-.5L2.8 5.4l-1.1-1.4-.8.5z'/%3e%3c/svg%3e");
+    }
+    
+    .was-validated .form-control:invalid {
+        border-color: var(--accent-color);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23e74c3c'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 0 3.4m0 1.5h.01'/%3e%3c/svg%3e");
+    }
+</style>
+
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    // Auto-focus on username field if empty
+    document.addEventListener('DOMContentLoaded', function() {
+        const usernameField = document.getElementById('username');
+        if (usernameField && usernameField.value === '') {
+            usernameField.focus();
+        }
+    });
+</script>
+{% endblock %}
