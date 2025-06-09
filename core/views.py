@@ -18,6 +18,9 @@ from django.views.generic import TemplateView
 from django.contrib.auth.mixins import UserPassesTestMixin
 from core.helpers import get_location_data
 from servicenet.models import GHLUser
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 
 
@@ -236,7 +239,7 @@ def location_users_ajax(request, location_id):
     try:
         users = GHLUser.objects.filter(location_id=location_id).values(
             'user_id', 'first_name', 'last_name', 'name', 'email', 'phone', 'calendar_id'
-        )
+        ).order_by("id")
         
         users_list = []
         for user in users:
@@ -263,3 +266,116 @@ class AdminProtectedView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['user'] = self.request.user
         return context
+    
+
+
+@require_http_methods(["POST"])
+def update_user_calendar(request, user_id):
+    """Update calendar ID for a specific user"""
+    try:
+        # Get the user
+        user = get_object_or_404(GHLUser, user_id=user_id)
+        
+        # Parse JSON data
+        data = json.loads(request.body)
+        calendar_id = data.get('calendar_id', '').strip()
+        
+        # Update calendar_id (can be empty string or None)
+        user.calendar_id = calendar_id if calendar_id else None
+        user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Calendar ID updated successfully',
+            'calendar_id': user.calendar_id,
+            'user_id': user.user_id
+        })
+    
+    except GHLUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'User not found'
+        }, status=404)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# Optional: Bulk update calendar IDs
+@require_http_methods(["POST"])
+def bulk_update_calendars(request):
+    """Bulk update calendar IDs for multiple users"""
+    try:
+        data = json.loads(request.body)
+        updates = data.get('updates', [])
+        
+        updated_count = 0
+        errors = []
+        
+        for update in updates:
+            user_id = update.get('user_id')
+            calendar_id = update.get('calendar_id', '').strip()
+            
+            try:
+                user = GHLUser.objects.get(user_id=user_id)
+                user.calendar_id = calendar_id if calendar_id else None
+                user.save()
+                updated_count += 1
+            except GHLUser.DoesNotExist:
+                errors.append(f"User {user_id} not found")
+            except Exception as e:
+                errors.append(f"Error updating user {user_id}: {str(e)}")
+        
+        return JsonResponse({
+            'success': True,
+            'updated_count': updated_count,
+            'errors': errors
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# Optional: Get calendar statistics
+def get_calendar_stats(request, location_id=None):
+    """Get calendar assignment statistics"""
+    try:
+        queryset = GHLUser.objects.all()
+        if location_id:
+            queryset = queryset.filter(location_id=location_id)
+        
+        total_users = queryset.count()
+        users_with_calendar = queryset.exclude(calendar_id__isnull=True).exclude(calendar_id='').count()
+        users_without_calendar = total_users - users_with_calendar
+        
+        return JsonResponse({
+            'success': True,
+            'stats': {
+                'total_users': total_users,
+                'users_with_calendar': users_with_calendar,
+                'users_without_calendar': users_without_calendar,
+                'calendar_coverage_percentage': round((users_with_calendar / total_users * 100) if total_users > 0 else 0, 2)
+            }
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

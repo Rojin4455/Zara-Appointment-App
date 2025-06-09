@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -12,6 +11,9 @@ from django.utils.dateparse import parse_datetime
 from datetime import timedelta
 import pytz
 from servicenet.models import GHLAppointment
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 
 
@@ -31,6 +33,9 @@ class GhlWebhookView(View):
             elif event_type == "TaskDelete":
                 self.handle_task_delete(webhook_data, token)
 
+            elif event_type == "UserCreate":
+                self.handle_user_create(webhook_data, token)
+
             return JsonResponse({"message": "Handled"}, status=200)
         
         except Exception as e:
@@ -43,7 +48,12 @@ class GhlWebhookView(View):
         location_id = data["locationId"]
         title = data["title"]
         description = data["body"]
-        calendar_id = self.get_calendar_id(assigned_to, location_id, token)
+        # calendar_id = self.get_calendar_id(assigned_to, location_id, token)
+        try:
+            user = GHLUser.objects.get(user_id=assigned_to)
+            calendar_id = user.calendar_id
+        except:
+            return
         
         start_time_utc = parse_datetime(data["dueDate"])
         start_time_bst = start_time_utc.astimezone(BST)
@@ -117,6 +127,34 @@ class GhlWebhookView(View):
         except GHLAppointment.DoesNotExist:
             pass  # Optionally log
 
+
+    def handle_user_create(self, data, token):
+
+        headers = {
+        'Accept': 'application/json',
+        'Authorization': f'Bearer {token.access_token}',
+        'Version': '2021-07-28'  # or '2021-04-15' for calendars endpoint
+        }
+
+        user_response = requests.get(
+        f"https://services.leadconnectorhq.com/users/{data["id"]}",
+        headers=headers
+        )
+
+        user = user_response.json()
+        user_id = user["id"]
+        GHLUser.objects.update_or_create(
+            user_id=user_id,
+            defaults={
+                "first_name": user.get("firstName", ""),
+                "last_name": user.get("lastName", ""),
+                "name": user.get("name", ""),
+                "email": user.get("email", ""),
+                "phone": user.get("phone", ""),
+                "location_id": token.location_id,
+            }
+        )
+
     def get_calendar_id(self, user_id, location_id, token):
         headers = {
             "Authorization": f"Bearer {token.access_token}",
@@ -150,3 +188,45 @@ class HandleUsersView(View):
 
         return JsonResponse({"message": "Success"}, status=200)
     
+
+
+@require_http_methods(["POST"])
+def update_user_calendar(request, user_id):
+    """Update calendar ID for a specific user"""
+    try:
+        # Get the user
+        user = get_object_or_404(GHLUser, user_id=user_id)
+        
+        # Parse JSON data
+        data = json.loads(request.body)
+        calendar_id = data.get('calendar_id', '').strip()
+        
+        # Update calendar_id (can be empty string or None)
+        user.calendar_id = calendar_id if calendar_id else None
+        user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Calendar ID updated successfully',
+            'calendar_id': user.calendar_id,
+            'user_id': user.user_id
+        })
+    
+    except GHLUser.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'User not found'
+        }, status=404)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+

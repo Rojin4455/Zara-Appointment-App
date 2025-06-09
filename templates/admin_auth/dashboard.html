@@ -506,97 +506,276 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalContent = document.getElementById('modalContent');
     
     viewUsersButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const locationId = this.dataset.locationId;
-            const locationName = this.dataset.locationName;
-            
-            // Update modal title
-            modalTitle.textContent = locationName || 'Location Users';
-            modalSubtitle.textContent = `Location ID: ${locationId}`;
-            
-            // Show loading state
-            modalContent.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-3 text-muted">Loading users...</p>
+    button.addEventListener('click', function() {
+        const locationId = this.dataset.locationId;
+        const locationName = this.dataset.locationName;
+        
+        // Update modal title
+        modalTitle.textContent = locationName || 'Location Users';
+        modalSubtitle.textContent = `Location ID: ${locationId}`;
+        
+        // Show loading state
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
-            `;
-            
-            // Fetch users for this location
-            fetch(`/location-users/${locationId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.users && data.users.length > 0) {
-                        let usersHtml = '<div class="p-4">';
-                        
-                        data.users.forEach(user => {
-                            usersHtml += `
-                                <div class="user-card border rounded-3 p-4 mb-3">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <div class="avatar-circle bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
-                                                    <i class="fas fa-user"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 class="mb-0 fw-bold">${user.name}</h6>
-                                                    <small class="text-muted">ID: ${user.user_id}</small>
-                                                </div>
+                <p class="mt-3 text-muted">Loading users...</p>
+            </div>
+        `;
+        
+        // Fetch users for this location
+        fetch(`/location-users/${locationId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.users && data.users.length > 0) {
+                    let usersHtml = '<div class="p-4">';
+                    
+                    data.users.forEach(user => {
+                        usersHtml += `
+                            <div class="user-card border rounded-3 p-4 mb-3 shadow-sm">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="avatar-circle bg-gradient-primary text-primary-400 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                                                <i class="fas fa-user fa-lg bg-primary-subtle"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0 fw-bold">${user.name}</h6>
+                                                <small class="text-muted">ID: ${user.user_id}</small>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="contact-info">
-                                                <div class="mb-2">
-                                                    <i class="fas fa-envelope text-muted me-2"></i>
-                                                    <span class="text-sm">${user.email}</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="contact-info">
+                                            <div class="mb-2">
+                                                <i class="fas fa-envelope text-muted me-2"></i>
+                                                <span class="text-sm">${user.email}</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <i class="fas fa-phone text-muted me-2"></i>
+                                                <span class="text-sm">${user.phone || 'N/A'}</span>
+                                            </div>
+                                            <div class="calendar-section">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="calendar-display" id="calendar-display-${user.user_id}">
+                                                        <i class="fas fa-calendar text-muted me-2"></i>
+                                                        <span class="badge ${user.calendar_id ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'}" style="font-size: 0.75rem;">
+                                                            ${user.calendar_id || 'No Calendar'}
+                                                        </span>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary edit-calendar-btn" 
+                                                            data-user-id="${user.user_id}" 
+                                                            data-current-calendar="${user.calendar_id || ''}"
+                                                            style="border-radius: 20px; padding: 4px 12px;">
+                                                        <i class="fas fa-edit me-1"></i>Edit
+                                                    </button>
                                                 </div>
-                                                <div class="mb-2">
-                                                    <i class="fas fa-phone text-muted me-2"></i>
-                                                    <span class="text-sm">${user.phone || 'N/A'}</span>
-                                                </div>
-                                                <div>
-                                                    <i class="fas fa-calendar text-muted me-2"></i>
-                                                    <span class="badge ${user.calendar_id ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}">
-                                                        ${user.calendar_id || 'No Calendar'}
-                                                    </span>
+                                                
+                                                <!-- Inline Edit Form (Initially Hidden) -->
+                                                <div class="calendar-edit-form mt-3" id="calendar-edit-${user.user_id}" style="display: none;">
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text bg-light">
+                                                            <i class="fas fa-calendar-alt text-primary"></i>
+                                                        </span>
+                                                        <input type="text" 
+                                                               class="form-control calendar-input" 
+                                                               placeholder="Enter Calendar ID"
+                                                               value="${user.calendar_id || ''}"
+                                                               id="calendar-input-${user.user_id}">
+                                                        <button class="btn btn-success save-calendar-btn" 
+                                                                data-user-id="${user.user_id}"
+                                                                type="button">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button class="btn btn-secondary cancel-calendar-btn" 
+                                                                data-user-id="${user.user_id}"
+                                                                type="button">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                    <small class="text-muted mt-1 d-block">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        Enter the calendar ID to associate with this user
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            `;
-                        });
-                        
-                        usersHtml += '</div>';
-                        modalContent.innerHTML = usersHtml;
-                    } else {
-                        modalContent.innerHTML = `
-                            <div class="text-center py-5">
-                                <div class="mb-4">
-                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                    <h5 class="text-muted">No Users Found</h5>
-                                    <p class="text-muted">This location doesn't have any users associated with it.</p>
-                                </div>
                             </div>
                         `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching users:', error);
+                    });
+                    
+                    usersHtml += '</div>';
+                    modalContent.innerHTML = usersHtml;
+                    
+                    // Add event listeners for calendar editing
+                    setupCalendarEditListeners();
+                    
+                } else {
                     modalContent.innerHTML = `
                         <div class="text-center py-5">
                             <div class="mb-4">
-                                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                                <h5 class="text-danger">Error Loading Users</h5>
-                                <p class="text-muted">Failed to load users for this location. Please try again.</p>
+                                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Users Found</h5>
+                                <p class="text-muted">This location doesn't have any users associated with it.</p>
                             </div>
                         </div>
                     `;
-                });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching users:', error);
+                modalContent.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                            <h5 class="text-danger">Error Loading Users</h5>
+                            <p class="text-muted">Failed to load users for this location. Please try again.</p>
+                        </div>
+                    </div>
+                `;
+            });
+    });
+});
+
+// Function to setup calendar edit listeners
+function setupCalendarEditListeners() {
+    // Edit button listeners
+    document.querySelectorAll('.edit-calendar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const editForm = document.getElementById(`calendar-edit-${userId}`);
+            const displayDiv = document.getElementById(`calendar-display-${userId}`);
+            
+            // Hide display, show edit form
+            displayDiv.style.display = 'none';
+            editForm.style.display = 'block';
+            
+            // Focus on input
+            document.getElementById(`calendar-input-${userId}`).focus();
         });
     });
+    
+    // Save button listeners
+    document.querySelectorAll('.save-calendar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const input = document.getElementById(`calendar-input-${userId}`);
+            const calendarId = input.value.trim();
+            
+            // Show loading state
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            this.disabled = true;
+            
+            // Send update request
+            fetch(`/update-user-calendar/${userId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    calendar_id: calendarId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the display
+                    const displayDiv = document.getElementById(`calendar-display-${userId}`);
+                    const editForm = document.getElementById(`calendar-edit-${userId}`);
+                    
+                    // Update badge
+                    const badge = displayDiv.querySelector('.badge');
+                    if (calendarId) {
+                        badge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+                        badge.textContent = calendarId;
+                    } else {
+                        badge.className = 'badge bg-warning-subtle text-warning border border-warning-subtle';
+                        badge.textContent = 'No Calendar';
+                    }
+                    
+                    // Show success animation
+                    displayDiv.style.display = 'flex';
+                    editForm.style.display = 'none';
+                    
+                    // Temporary success indicator
+                    const originalBadgeContent = badge.innerHTML;
+                    badge.innerHTML = '<i class="fas fa-check me-1"></i>' + badge.textContent;
+                    badge.classList.add('bg-success', 'text-white');
+                    
+                    setTimeout(() => {
+                        badge.innerHTML = badge.textContent;
+                        badge.classList.remove('bg-success', 'text-white');
+                        if (calendarId) {
+                            badge.classList.add('bg-success-subtle', 'text-success');
+                        } else {
+                            badge.classList.add('bg-warning-subtle', 'text-warning');
+                        }
+                    }, 2000);
+                    
+                } else {
+                    alert('Error updating calendar ID: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update calendar ID. Please try again.');
+            })
+            .finally(() => {
+                // Reset button
+                this.innerHTML = '<i class="fas fa-check"></i>';
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // Cancel button listeners
+    document.querySelectorAll('.cancel-calendar-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const editForm = document.getElementById(`calendar-edit-${userId}`);
+            const displayDiv = document.getElementById(`calendar-display-${userId}`);
+            
+            // Reset input to original value
+            const input = document.getElementById(`calendar-input-${userId}`);
+            const editBtn = document.querySelector(`[data-user-id="${userId}"].edit-calendar-btn`);
+            input.value = editBtn.dataset.currentCalendar;
+            
+            // Hide edit form, show display
+            editForm.style.display = 'none';
+            displayDiv.style.display = 'flex';
+        });
+    });
+    
+    // Enter key listener for inputs
+    document.querySelectorAll('.calendar-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const userId = this.id.replace('calendar-input-', '');
+                document.querySelector(`[data-user-id="${userId}"].save-calendar-btn`).click();
+            }
+        });
+    });
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
     // Auto-dismiss success/error messages after 5 seconds
     const alerts = document.querySelectorAll('.ghl-success-message, .ghl-error-message');
@@ -626,3 +805,6 @@ function refreshConnections() {
 }
 </script>
 {% endblock %}
+
+
+
